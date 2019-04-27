@@ -1,7 +1,7 @@
 <?php
 
   $nav_selected = "PIPLANNING";
-  $left_buttons = "YES";
+  $left_buttons = "YES"; 
   $left_selected = "CALCULATE";
 
   include("./nav.php");
@@ -9,7 +9,7 @@
   global $db;
 
 
-
+ 
   echo'<!--Copies in Bears custom stylesheet-->
   <link rel="stylesheet" type="text/css" href="styleCustom.css">';
   //Checks for ART Cookie, if it is not available it will update the cookie with a default value using the artCookie function
@@ -41,7 +41,7 @@ $default_total = 56;
   };
 
   //finds the team id for the team name for the selected team script
-
+  
 //Function that uses json file to build ART select menu. Updates selected default with the Cookie value
 $art = buildArtMenu($art_select);
 
@@ -57,8 +57,8 @@ if(isset($_COOKIE['piCookie'])){
   setcookie('piCookie', $program_increment_select);
   $program_increment_menu = buildPi_idMenu($program_increment);
 };
-//assigning duration with a default value
-$duration = 10;
+//Function for assigning the duration variable
+$duration = getDuration($program_increment_select);
 //initializes the totalcapacity variable
 $sql = "SELECT * FROM `capacity` WHERE program_increment='".$program_increment."' AND team_id='".$selected_team."'";
 $result = $db->query($sql);
@@ -70,7 +70,7 @@ if ($result->num_rows > 0) {
       $totalcapacity = $row["total"];
     }
 } else {
-
+  
   if (!isset($teamcapacity)  && !isset($_POST['restore'])  && !isset($_POST['submit0'])){
     $totalcapacity = ($default_total*6);
   }else{
@@ -79,7 +79,6 @@ if ($result->num_rows > 0) {
 };
 //Function for assigning the overhead percentage
 $overhead_percentage = getOverheadPercentage();
-
 ?>
 
 <!--
@@ -89,27 +88,26 @@ form for submitting data that will be prepopulated with data from the variables
     <div class="container">
   <form  method="POST" id="PI_form" name="PI_form">
     <table id="form_table" class="container">
-    <tr>
-<div style="float: right; margin-right: 10px; text-align: center; font-size: 12px;">
-              <div id="capacity-calc-bignum" name="totalcap"><?php echo $totalcapacity ?></div>
-              <b>Total Capacity for the Program Increment</b>
-            </div>
-          </td>
-
-</td></tr>
       <tr>
-        <td>Agile Release Train:</td>
+        <td></td>
+        <td>
+          <input type="hidden" id="baseUrl" name="baseUrl" readonly="readonly" value="<?php echo $base_url_out; ?>">
+        </td>
+      </tr>
+      <tr>
+       <!--  <td>Agile Release Train:</td>
         <td>
           <select id="art" name="art" onchange="
           //sets art select to selected value
           var art_select = this.value;
           //sets the selected value as the cookie
           document.cookie = escape('artCookie') + '=' + escape(art_select) ;
-
+          //updates the teams list
+          getTeams(art_select);
           location.reload();
           ">
           <option value="">-- Select --</option>
-          <?php echo $art; ?>
+          <?php //echo $art; ?>
         </select>
       </td>
     </tr>
@@ -121,53 +119,54 @@ form for submitting data that will be prepopulated with data from the variables
       var pi_select = this.value;
       //sets the selected value as the cookie
       document.cookie = escape('piCookie') + '=' + escape(pi_select) ;
-      location.reload();">
-      <?php echo $program_increment_menu; ?>
+      location.reload();"> 
+      <?php //echo $program_increment_menu; ?> -->
     </select>
   </td>
 </tr>
 <tr>
-            <td>Names of Teams:</td>
-            <td><select name="select-team" onchange="
-            //sets team_select to selected value
-            var team_select = this.value;
-            //sets the selected value as the cookie
-            document.cookie = escape('teamSelectCookie') + '=' + escape(team_select);
-            location.reload();" >
-              <?php
-
-              $sql = "SELECT DISTINCT t.team_id, t.team_name FROM trains_and_teams t where t.parent_name = '".$art_select."';";
-              //checks if there is a selected team in the cookie variable. If there is it will update the detault to the cookie value
-              if(isset($_COOKIE['teamSelectCookie'])){
-                $selected_team = $_COOKIE['teamSelectCookie'];
-              }
-              $result = $db->query($sql);
-
-              if ($result->num_rows > 0) {
-
-                  while ($row = $result->fetch_assoc()) {
-                    if ( trim($selected_team) == trim($row["team_id"]) ) {
-                      echo '<option value="'.$row["team_id"].'" selected>'.$row["team_name"].'</option>';
-                    }else{
-                      echo '<option value="'.$row["team_id"].'">'.$row["team_name"].'</option>';
-                    }
-
-                  }
-              }
-              ?>
-            </select>
-            </td>
-        </tr>
-<tr>
-<td><!--input type="submit" id="php_button" name="generate_button" class="button" value="Generate"></td-->
-<td><input type="hidden" name="current-team-selected" value="<?php echo $selected_team; ?>"></td>
+<td><input type="submit" id="php_button" onclick="updateEmployeeTable()" name="generate_button" class="button" value="Generate"></td>
+<td></td>
 </tr>
+<tr>
+<div style="float: right; margin-right: 10px; text-align: center; font-size: 12px;">
+              <div id="capacity-calc-bignum" name="totalcap"><?php echo $totalcapacity ?></div>
+              <b>Total Capacity for the Program Increment<br/>(capacity-calc-bignum $totalcap)</b>
+            </div>
+          </td>
 
+</td></tr>
 </table>
 </form><br>
-
-
+</div>
+</div>
 <script>
+//assigning the artCookie to a variable
+var artCookie = getCookie('artCookie');
+//running the getTeams when the window is loaded using the cookie
+$( window ).on( "load", getTeams(artCookie) );
+function getTeams(art_select){
+  //gets values from JSON file
+  $.getJSON('dataFiles/at_cache.json', function(data){
+    //initializes an array to story the avilable teams
+      var at_list = [];
+      //for loop for adding team names to teams_list
+      var x=data.length;
+      for(var i=0; i < x ; i++){
+        var parent = data[i].parent_name;
+        if(parent == art_select){
+          at_list.push(data[i].team_name);
+        }
+        //updates teams with the calculated list
+        //document.getElementById('teams').value = at_list;
+        var select = document.getElementById("teams");
+        select.options.length = 0;
+        for(index in at_list) {
+          select.options[select.options.length] = new Option(at_list[index], index);
+        }
+      };
+    });
+  };
 
   //function for capturing the cookie
   function getCookie(cookieName) {
@@ -193,7 +192,7 @@ form for submitting data that will be prepopulated with data from the variables
   $sequenceArray = array();
   $iterationArray = array();
   date_default_timezone_set('America/Chicago');
-  /*//updated sql so select values matched availabe column names
+  //updated sql so select values matched availabe column names
   $sql = "SELECT sequence, PI_id as program_increment, iteration_id as iteration , sequence
   FROM `cadence`
   WHERE PI_id in (SELECT  PI_id
@@ -231,31 +230,22 @@ form for submitting data that will be prepopulated with data from the variables
       //echo "In-between Program Increments";
     }
     $result->close();
-  }*/
+  }
 
 
-  //echo '<script>console.log('.$sequence.');</script>';
+  echo '<script>console.log('.$sequence.');</script>';
   //checks if there is a current team selected. If not it uses the artCookie to find the $selected_team
-  //if ($_REQUEST['generate_button']) {
-      //$selected_team = $_POST['current-team-selected'];
-  //Creates an array of the active sequences and iterations
-  if ($result = $db->query("SELECT sequence, iteration_id as iteration FROM `cadence` WHERE PI_id ='".$program_increment."';")) {
-    $rows = array();
-    while($row = $result->fetch_array()) {
-      $sequenceArray[]=$row["sequence"];
-      $iterationArray[]=$row["iteration"];
-    }
-};
-          $count_iteration = count($iterationArray);
+  if (isset($_POST['current-team-selected'])) {
+      $selected_team = $_POST['current-team-selected'];
 
- // } ;
-/*
+  } ;
+
   if (isset($_POST['showNext'])) {
     $sequence++;
     echo '<script>console.log("Show Next: " + "'.$sequence.'");</script>';
     echo '<script>console.log("Program Increment: " + "'.$program_increment.'");</script>';
-
-    $sql = "SELECT sequence, PI_id as program_increment, iteration_id as iteration
+    
+    $sql = "SELECT sequence, PI_id as program_increment, iteration_id as iteration 
             FROM `cadence`
             WHERE sequence='".$sequence."';";
     $result = $db->query($sql);
@@ -266,7 +256,7 @@ form for submitting data that will be prepopulated with data from the variables
       $sequence = $row["sequence"];
       $result->close();
     } else {
-      $sql = "SELECT sequence, PI_id as program_increment, iteration_id as iteration
+      $sql = "SELECT sequence, PI_id as program_increment, iteration_id as iteration 
               FROM `cadence`
               WHERE PI_id='".$program_increment."'
               ORDER BY sequence limit 1;";
@@ -285,10 +275,10 @@ form for submitting data that will be prepopulated with data from the variables
     $result = $db->query($sql);
     if ($result->num_rows > 0) {
       $default_data = false;
-      $default_total = ($row["iteration_1"] + $row["iteration_2"] + $row["iteration_3"] + $row["iteration_4"]+ $row["iteration_5"] + $row["iteration_6"] + $row["iteration_P"]);
+      //$default_total = ($row["iteration_1"] + $row["iteration_2"] + $row["iteration_3"] + $row["iteration_4"]+ $row["iteration_5"] + $row["iteration_6"] + $row["iteration_IP"]);
     } else {
       $default_data = true;
-
+      
       $sql = "SELECT * FROM `membership` where team_name = (select team_name from trains_and_teams where team_id = '".$selected_team."' and art_name = '".$art_name."' LIMIT 1) ;";
       $result = $db->query($sql);
       if ($result->num_rows > 0) {
@@ -317,18 +307,13 @@ form for submitting data that will be prepopulated with data from the variables
   }
   if (isset($_POST['select-team'])) {
     $selected_team = $_POST['select-team'];
-    //$default_total = 56;
+
     $sql = "SELECT * FROM `capacity` where team_id='".$selected_team."' AND program_increment='".$program_increment."';";
     $result = $db->query($sql);
     if ($result->num_rows > 0) {
     } else {
       $default_data = true;
-      //$default_total = ($defaul_total * 5) + 28;
-      if(isset($_COOKIE['artCookie'])){
-        $art_name=$_COOKIE['artCookie'];
-      } else {
-        $art_name = setArtCookie();
-      }
+      $default_total = ($defaul_total * 5) + 28;
 
       $sql = "SELECT * FROM `membership` where team_name = (select team_name from trains_and_teams where team_id = '".$selected_team."' and art_name = '".$art_name."' LIMIT 1);";
       $result = $db->query($sql);
@@ -379,8 +364,35 @@ form for submitting data that will be prepopulated with data from the variables
       $row6 = $result6->fetch_assoc();
       $overhead_percentage = $row6["value"];
   }
-*/
 
+  if (isset($_POST['submit0'])) {
+    $iterationcapacity = 0;
+    for ($x=0; $x < count($_POST['rownum']); $x++){
+      $teamcapacity[$_POST['rownum'][$x]] = round(($duration-$_POST['daysoff'][$x])*((100-$overhead_percentage)/100)*($_POST['velocity'][$x]/100));
+      $iterationcapacity += $teamcapacity[$_POST['rownum'][$x]];
+      $daysoff[$_POST['rownum'][$x]] = $_POST['daysoff'][$x];
+      $velocity[$_POST['rownum'][$x]] = $_POST['velocity'][$x];
+    }
+    $sqliter = "UPDATE `capacity` SET iteration_".substr($iteration, -1)."='".$iterationcapacity."' WHERE program_increment='".$program_increment."' AND team_id='".$selected_team."';";
+    $result_iter = $db->query($sqliter);
+    $sqlinc = "SELECT (iteration_1 + iteration_2 + iteration_3 + iteration_4 + iteration_5 + iteration_6) as new_total FROM `capacity` WHERE program_increment='".$program_increment."' AND team_id='".$selected_team."';";
+    $result_inc = $db->query($sqlinc);
+    if ($result_inc->num_rows > 0) {
+        $rowinc = $result_inc->fetch_assoc();
+        $pi_capacity = $rowinc["new_total"];
+      }
+    $sqlup = "UPDATE `capacity` SET total='$pi_capacity' WHERE program_increment='".$program_increment."' AND team_id='".$selected_team."';";
+    $result_up = $db->query($sqlup);
+
+    // keep velocity and days off value changes
+    $iterationcapacity = 0;
+    for ($x=0; $x < count($_POST['rownum']); $x++){
+      $teamcapacity[$_POST['rownum'][$x]] = round(($duration-$_POST['daysoff'][$x])*((100-$overhead_percentage)/100)*($_POST['velocity'][$x]/100));
+      $iterationcapacity += $teamcapacity[$_POST['rownum'][$x]];
+      $daysoff[$_POST['rownum'][$x]] = $_POST['daysoff'][$x];
+      $velocity[$_POST['rownum'][$x]] = $_POST['velocity'][$x];
+    }
+  }
 
   ?>
 
@@ -389,44 +401,102 @@ form for submitting data that will be prepopulated with data from the variables
 
       <h3 style=" color: #01B0F1; font-weight: bold;">Capacity Calculations for the Agile Team</h3>
 
+      <table width="95%">
+        <tr>
+          <td width="25%" style="vertical-align: top; font-weight: bold; color: #01B0F1; line-height: 130%; font-size: 18px;">
+            <form method="post" action="#">
+            Agile Release Train: &emsp; <br/>
+            Agile Team: &emsp; <br/>
+            Program Increment (PI): &emsp; <br/>
+          </td>
+          <td  style="vertical-align: top; font-weight: bold; line-height: 130%;  font-size: 18px;" width="25%">
+            
+          <select id="art" name="art" onchange="
+            //sets art select to selected value
+            var art_select = this.value;
+            //sets the selected value as the cookie
+            document.cookie = escape('artCookie') + '=' + escape(art_select) ;
+            //updates the teams list
+            getTeams(art_select);
+            location.reload();">
+            <option value="">-- Select --</option>
+            <?php echo $art; ?>
+          </select>
+          <br/>
+            <select name="select-team" onchange="      
+            //sets team_select to selected value
+            var team_select = this.value;
+            //sets the selected value as the cookie
+            document.cookie = escape('teamSelectCookie') + '=' + escape(team_select);
+            location.reload();" >
+              <?php
+              $sql = "SELECT DISTINCT c.team_id, c.team_name FROM capacity c, trains_and_teams t where c.program_increment='".$program_increment."' and c.team_id = t.team_id and t.parent_name = '".$art_select."';";
+              //checks if there is a selected team in the cookie variable. If there is it will update the detault to the cookie value
+              if(isset($_COOKIE['teamSelectCookie'])){
+                $selected_team = $_COOKIE['teamSelectCookie'];
+              }
+              $result = $db->query($sql);
 
+              if ($result->num_rows > 0) {
 
+                  while ($row = $result->fetch_assoc()) {
+                    if ( trim($selected_team) == trim($row["team_id"]) ) {
+                      echo '<option value="'.$row["team_id"].'" selected>'.$row["team_name"].'</option>';
+                    }else{
+                      echo '<option value="'.$row["team_id"].'">'.$row["team_name"].'</option>';
+                    }
+
+                  }
+              }
+              ?>
+            </select>
+            <br/>
+          <select id="PI_ID" name="pi_id" onchange="
+          //sets pi_select to selected value
+          var pi_select = this.value;
+          //sets the selected value as the cookie
+          document.cookie = escape('piCookie') + '=' + escape(pi_select) ;
+          location.reload();">
+          <?php echo $program_increment_menu; ?>
+          </select>
+
+          </form><br/>
           <?php
 
+            //Creates an array of the active sequences and iterations
+  if ($result = $db->query("SELECT sequence, iteration_id as iteration FROM `cadence` WHERE PI_id ='".$_COOKIE['piCookie']."';")) {
+    $rows = array();
+    while($row = $result->fetch_array()) {
+      $sequenceArray[]=$row["sequence"];
+      $iterationArray[]=$row["iteration"];
+    }
+};
+          $count_iteration = count($iterationArray);
   //Loop for displaying the series of Employee table & iteration calculation placeholder
   for($i = 0; $i < $count_iteration; $i++){
     creatTables($program_increment, $selected_team, $iterationArray[$i], $sequenceArray[$i], $overhead_percentage);
   };
 
-
+          
 
 
 
           function creatTables($program_increment, $selected_team, $iteration, $sequence, $overhead_percentage){
+            getTotalCapacity($program_increment, $selected_team, $sequence);
             ///////////////////////////Funtion Start/////////////////////////////////////////////////////////
-            $default_total = 56;
-            /*console.log("PI Cookie: " + getCookie('piCookie'));
-            console.log("ART Cookie: "+getCookie('artCookie'));
-            console.log("Team Cookie: " + getCookie('teamSelectCookie'));*/
+            $current_sequence = 'current-sequence'.$sequence;
+            if (isset($_POST[$current_sequence])) {
+              $sequence = $_POST[$current_sequence];
+          
+            };
+
             $db = new mysqli(DATABASE_HOST, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE);
             $db->set_charset("utf8");
-            $duration = getDuration($iteration);
-            echo'<table width="100%">
-            <tr>
-              <td width="25%" style="vertical-align: top; font-weight: bold; color: #01B0F1; line-height: 130%; font-size: 18px;">
-              &nbsp;&nbsp;Agile Release Train: </td><td>'.$_COOKIE['artCookie'].'</td></tr>
-              <td width="25%" style="vertical-align: top; font-weight: bold; color: #01B0F1; line-height: 130%; font-size: 18px;">
-              &nbsp;&nbsp;Agile Team ID: </td><td>'.$selected_team.'</td></tr>
-              <td width="25%" style="vertical-align: top; font-weight: bold; color: #01B0F1; line-height: 130%; font-size: 18px;">
-              &nbsp;&nbsp;Program Increment (PI): </td><td>'.$program_increment.'</td></tr>
-              ';
+            $duration = getDuration($program_increment);
 
-           echo '<tr><td width="25%" style="vertical-align: top; font-weight: bold; color: #01B0F1; line-height: 130%; font-size: 18px;">
-           &nbsp;&nbsp;Iteration (I): &nbsp;</td><td>'.$iteration.'</td></tr>';
-           echo '<tr><td width="25%" style="vertical-align: top; font-weight: bold; color: #01B0F1; line-height: 130%; font-size: 18px;">
-           &nbsp;&nbsp;No. of Days in Iteration: &nbsp;</td><td>'.$duration.'</td></tr>';
-           echo '<tr><td width="25%" style="vertical-align: top; font-weight: bold; color: #01B0F1; line-height: 130%; font-size: 18px;">
-           &nbsp;&nbsp;Overhead Percentage: &nbsp;</td><td>'.$overhead_percentage.'%</td></tr>';
+           echo '<tr><td>&nbsp;&nbsp;Iteration (I): &nbsp;</td><td>'.$iteration.'</td></tr>';
+           echo '<tr><td>&nbsp;&nbsp;No. of Days in Iteration: &nbsp;</td><td>'.$duration.'</td></tr>';
+           echo '<tr><td>&nbsp;&nbsp;Overhead Percentage: &nbsp;</td><td>'.$overhead_percentage.'%</td></tr>';
             //echo "&nbsp;".$program_increment."<br/>";
 
             echo '<td width="50%"  style="font-weight: bold;">';
@@ -454,14 +524,14 @@ form for submitting data that will be prepopulated with data from the variables
                 $totalcapacity = $default_total*6;
               }
             }
-
+       
              ?>
             <tr>
             <td></td>
             <td>
             <div style="float: left; text-align: center; font-size: 12px;">
-              <div id="capacity-calc-bignum" name="icap<?php echo $sequence ?>"><?php echo $icapacity ?></div>
-              Total Capacity for this Iteration
+              <div id="capacity-calc-bignum" name="icap"><?php echo $icapacity ?></div>
+              Total Capacity for this Iteration <br/>(capacity-calc-bignum $icapacity)
             </div>
           </td>
         </tr>
@@ -526,7 +596,7 @@ form for submitting data that will be prepopulated with data from the variables
                   $storypts = $teamcapacity[$rownum];
                 }else{
                   $storypts = round(($duration-0)*((100-$overhead_percentage)/100)*($row2["value"]/100));
-                } 
+                }
                 $valueForJS = $row2["value"];
                 if (isset($daysoff[$rownum]) && !isset($_POST['restore'.$sequence])  && isset($_POST['submit0'])){
                   $doff = $daysoff[$rownum];
@@ -544,10 +614,10 @@ form for submitting data that will be prepopulated with data from the variables
                       <td id='capacity-table-td' style='font-weight:500;'>" . $row["last_name"] . "</td>
                       <td id='capacity-table-td' style='font-weight:500;'>" . $row["first_name"] . "</td>
                       <td id='capacity-table-td' style='font-weight:500;'>" . $row["role"] . "</td>
-                      <td id='capacity-table-td' style='font-weight:500; text-align: center;'><input id='autoin_".$sequence."' class='capacity-text-input' type='text' name='velocity_".$sequence."[]' value='" . $vel . "' onchange='autoLoad".$sequence."();' /> %</td>
-                      <td id='capacity-table-td' style='font-weight:500; text-align: center;'><input id='autoin2_".$sequence."' class='capacity-text-input' type='text' name='daysoff_".$sequence."[]' value='".$doff."' onchange='autoLoad".$sequence."();' /></td>
-                      <td id='capacity-table-td' style='font-weight:500; text-align: center;  background: #e9e9e9;'><input id='story_".$sequence."' class='capacity-text-input' type='text' name='storypoints_".$sequence."[]' value='".$storypts."' readonly='readonly' style='border: 0;  background: #e9e9e9;' />&nbsp;pts</td>
-                      <input type='hidden' name='rownum_".$sequence."[]' id='autoin3_".$sequence."' value='".$rownum."'/>
+                      <td id='capacity-table-td' style='font-weight:500; text-align: center;'><input id='autoin' class='capacity-text-input' type='text' name='velocity[]' value='" . $vel . "' onchange='autoLoad();' /> %</td>
+                      <td id='capacity-table-td' style='font-weight:500; text-align: center;'><input id='autoin2' class='capacity-text-input' type='text' name='daysoff[]' value='".$doff."' onchange='autoLoad();' /></td>
+                      <td id='capacity-table-td' style='font-weight:500; text-align: center;  background: #e9e9e9;'><input id='story' class='capacity-text-input' type='text' name='storypoints[]' value='".$storypts."' readonly='readonly' style='border: 0;  background: #e9e9e9;' />&nbsp;pts</td>
+                      <input type='hidden' name='rownum[]' value='".$rownum."'/>
                   </tr>";
                   $rownum++;
               }
@@ -558,7 +628,7 @@ form for submitting data that will be prepopulated with data from the variables
           }
 
           $result->close();
-
+          
 
           echo '</tbody>';
 
@@ -568,11 +638,11 @@ form for submitting data that will be prepopulated with data from the variables
 
       echo '</table>';
       echo '<input type="submit" id="capacity-button-blue" name="submit0" value="Submit">
-      <input type="reset" id="capacity-button-blue" name="restore'.$sequence.'" value="Restore Defaults">
-
-
+      <input type="submit" id="capacity-button-blue" name="restore'.$sequence.'" value="Restore Defaults">
+      <input type="submit" id="capacity-button-blue" name="showNext" value="Show Next Iteration">
+        <input type="hidden" name="current-team-selected" value="'.$selected_team.'">
+        <input type="hidden" name="current-sequence"'.$sequence.' value='.$sequence.'">
       </form>
-
 
       <script type="text/javascript">
 
@@ -590,81 +660,37 @@ form for submitting data that will be prepopulated with data from the variables
         document.getElementById(\'maincap'.$sequence.'\').submit();
       }
 
-      function autoLoad'.$sequence.'() {
-        var velocity'.$sequence.' = $("input[name=\'velocity_'.$sequence.'[]\']")
-            .map(function(){return $(\'#autoin_'.$sequence.'\').val();}).get();
-        var daysoff'.$sequence.' = $("input[name=\'daysoff_'.$sequence.'[]\']")
-            .map(function(){return $(\'#autoin2_'.$sequence.'\').val();}).get();
-        var rownum'.$sequence.' = $("input[name=\'rownum_'.$sequence.'[]\']")
-            .map(function(){return $(\'#autoin3_'.$sequence.'\').val();}).get();
+      function autoLoad() {
+        var velocity = $("input[name=\'velocity[]\']")
+            .map(function(){return $(this).val();}).get();
+        var daysoff = $("input[name=\'daysoff[]\']")
+            .map(function(){return $(this).val();}).get();
+        var rownum = $("input[name=\'rownum[]\']")
+            .map(function(){return $(this).val();}).get();
 
         var overhead = "'.$overhead_percentage.'";
-        var duration'.$sequence.' = "'.$duration.'";
+        var duration = "'.$duration.'";
         var value = "'.$valueForJS.'";
         var totalcap_old = "'.$totalcapacity.'";
-        var icap'.$sequence.'_old = "'.$icapacity.'";
-        var icap'.$sequence.' = 0;
+        var icap_old = "'.$icapacity.'";
+        var icap = 0;
 
-        for (var i in rownum'.$sequence.') {
-            var storypts'.$sequence.'_'.$rownum.' = Math.round( ( duration'.$sequence.' - daysoff'.$sequence.'[i] ) * ( ( 100-overhead ) / 100 ) * ( velocity'.$sequence.'[i] / 100 ) );
-            $("input[name=\'storypoints_'.$sequence.'[]\']").eq(i).val(storypts'.$sequence.'_'.$rownum.');
-            icap'.$sequence.' += storypts'.$sequence.'_'.$rownum.';
+        for (var i in rownum) {
+            var storypts = Math.round( ( duration - daysoff[i] ) * ( ( 100-overhead ) / 100 ) * ( velocity[i] / 100 ) );
+            $("input[name=\'storypoints[]\']").eq(i).val(storypts);
+            icap += storypts;
         }
 
-        document.getElementsByName("icap'.$sequence.'").innerHTML = icap'.$sequence.';
-          var capdiff'.$sequence.' = icap'.$sequence.' - icap'.$sequence.'_old;
-          var tcap = parseInt(capdiff'.$sequence.') + parseInt(totalcap_old);
+        document.getElementsByName("icap")[0].innerHTML = icap;
+          var capdiff = icap - icap_old;
+          var tcap = parseInt(capdiff) + parseInt(totalcap_old);
           document.getElementsByName("totalcap")[0].innerHTML = tcap;
-          console.log("icap_old: " +  icap'.$sequence.'_old);
-          console.log("icap: " +  icap'.$sequence.');
-          console.log("storypoints: " + storypts'.$sequence.');
-
       }
 
   </script>';
-  if (isset($_POST['submit0'])) {
-    $rownum_name = 'rownum'.$sequence;
-    $daysoff_name = 'daysoff'.$sequence;
-    $velocity_name = 'velocity'.$sequence;
-    $iterationcapacity = 0;
-    for ($x=0; $x < count($_POST[$rownum_name]); $x++){
-      $teamcapacity[$_POST[$rownum_name][$x]] = round(($duration-$_POST[$daysoff_name][$x])*((100-$overhead_percentage)/100)*($_POST[$velocity_name][$x]/100));
-      $iterationcapacity += $teamcapacity[$_POST[$rownum_name][$x]];
-      $daysoff[$_POST[$rownum_name][$x]] = $_POST[$daysoff_name][$x];
-      $velocity[$_POST[$rownum_name][$x]] = $_POST[$velocity_name][$x];
-    }
-    $sqliter = "UPDATE `capacity` SET iteration_".substr($iteration, -1)."='".$iterationcapacity."' WHERE program_increment='".$program_increment."' AND team_id='".$selected_team."';";
-    $result_iter = $db->query($sqliter);
-    $sqlinc = "SELECT (iteration_1 + iteration_2 + iteration_3 + iteration_4 + iteration_5 + iteration_6 + iteration_P) as new_total FROM `capacity` WHERE program_increment='".$program_increment."' AND team_id='".$selected_team."';";
-    $result_inc = $db->query($sqlinc);
-    if ($result_inc->num_rows > 0) {
-        $rowinc = $result_inc->fetch_assoc();
-        $pi_capacity = $rowinc["new_total"];
-      }
-    $sqlup = "UPDATE `capacity` SET total='$pi_capacity' WHERE program_increment='".$program_increment."' AND team_id='".$selected_team."';";
-    $result_up = $db->query($sqlup);
-
-    // keep velocity and days off value changes
-
-    $iterationcapacity = 0;
-    for ($x=0; $x < count($_POST[$rownum_name]); $x++){
-      $teamcapacity[$_POST[$rownum_name][$x]] = round(($duration-$_POST[$daysoff_name][$x])*((100-$overhead_percentage)/100)*($_POST[$velocity_name][$x]/100));
-      $iterationcapacity += $teamcapacity[$_POST[ $rownum_name][$x]];
-      $daysoff[$_POST[$rownum_name][$x]] = $_POST[$daysoff_name][$x];
-      $velocity[$_POST[$rownum_name][$x]] = $_POST[$velocity_name][$x];
-    }
-  }
       ///////////////////////////Funtion End/////////////////////////////////////////////////////////
         };
 ?>
-      <div id="capacity-footnote">
-        Note 1: Closed Iterations will NOT be shown.  The capacity cannot be changed for such iterations.  Show only the active iterations.<br/>
-        Note 2: This page can be reached in two ways:
-        <ul>
-          <li>Capacity > Calculate</li>
-          <li>Capacity > Summary > By clicking on one of the numbers</li>
-        </ul>
-      </div>
 
       </td>
       </tr>
@@ -673,8 +699,8 @@ form for submitting data that will be prepopulated with data from the variables
     </div>
     </div>
 
-
-  <?php
+   
+  <?php 
       //function for returning the default team name for a given ART
       function getDefaultTeamName($art_name){
           $db = new mysqli(DATABASE_HOST, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE);
@@ -702,7 +728,7 @@ form for submitting data that will be prepopulated with data from the variables
       }
 
       function getTotalCapacity($program_increment, $selected_team, $sequence){
-
+     
         $db = new mysqli(DATABASE_HOST, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE);
         $sql = "SELECT * FROM `capacity` WHERE program_increment='".$program_increment."' AND team_id='".$selected_team."'";
         $result = $db->query($sql);
@@ -716,8 +742,8 @@ form for submitting data that will be prepopulated with data from the variables
               $totalcapacity = $row["total"];
             }
         } else {
-
-          if (!isset($teamcapacity)  && !isset($_POST['restore'.sequence])  && !isset($_POST['submit0'])){
+          
+          if (!isset($teamcapacity)  && !isset($_POST['restore'.$sequence])  && !isset($_POST['submit0'])){
             $icapacity = array_sum($teamcapacity);
             $totalcapacity = ($default_total*6) + ($icapacity - $default_total);
           }else{
